@@ -1,11 +1,16 @@
 <script lang="ts">
 	import Fuse from 'fuse.js';
-
+	import AddContentMenu from './Knowledge/KnowledgeBase/AddContentMenu.svelte';
 	import dayjs from 'dayjs';
 	import relativeTime from 'dayjs/plugin/relativeTime';
 	dayjs.extend(relativeTime);
+	let selectedKnowledgeIds = [];
+	import AddTextContentModal from './Knowledge/KnowledgeBase/AddTextContentModal.svelte';
+	import KnowledgeSelector from './KnowledgeSelector.svelte';
+
 
 	import { toast } from 'svelte-sonner';
+	import { uploadDirectoryHandler, uploadFileHandler, createFileFromText } from './knowledgeUpload';
 	import { onMount, getContext, tick } from 'svelte';
 	const i18n = getContext('i18n');
 
@@ -44,6 +49,9 @@
 
 	let items = [];
 	let filteredItems = [];
+
+	// 添加文件输入引用
+	let inputFiles = null;
 
 	const setFuse = async () => {
 		items = knowledgeBases.filter(
@@ -99,6 +107,14 @@
 		knowledgeBases = await getKnowledgeBaseList(localStorage.token);
 		loaded = true;
 	});
+	let showAddTextContentModal = false;
+
+
+	// 新增：上传相关状态
+let showKnowledgeSelector = false; // 选择器显示状态
+let uploadType = ''; // 标记当前上传类型：file/directory/text
+let selectedKnowledgeId = ''; // 选中的知识库ID
+	
 </script>
 
 <svelte:head>
@@ -114,6 +130,75 @@
 			deleteHandler(selectedItem);
 		}}
 	/>
+
+<AddTextContentModal
+	bind:show={showAddTextContentModal}
+	on:submit={(e) => {
+		const file = createFileFromText(e.detail.name, e.detail.content);
+		uploadFileHandler(localStorage.token, file, selectedKnowledgeId, $i18n);
+	}}
+/>
+
+<DeleteConfirmDialog
+    bind:show={showDeleteConfirm}
+    on:confirm={() => deleteHandler(selectedItem)}
+  />
+
+  <!-- 新增：知识库选择器 -->
+  <KnowledgeSelector
+  bind:show={showKnowledgeSelector}
+  bind:knowledgeBases={knowledgeBases}
+  on:select={(e) => {
+    selectedKnowledgeIds = e.detail; // 接收多选的ID数组
+    // 根据上传类型执行对应上传逻辑
+    if (uploadType === 'file') {
+      document.getElementById('files-input').click();
+    } else if (uploadType === 'directory') {
+      uploadDirectoryHandler(localStorage.token, selectedKnowledgeIds, $i18n); // 传入数组
+    } else if (uploadType === 'text') {
+      showAddTextContentModal = true;
+    }
+  }}
+  on:cancel={() => {
+    uploadType = '';
+    selectedKnowledgeIds = []; // 取消时清空
+  }}
+/>
+
+  <AddTextContentModal
+  bind:show={showAddTextContentModal}
+  on:submit={(e) => {
+    const file = createFileFromText(e.detail.name, e.detail.content);
+    // 传入多选的知识库ID数组
+    uploadFileHandler(localStorage.token, file, selectedKnowledgeIds, $i18n);
+    uploadType = '';
+    selectedKnowledgeIds = [];
+  }}
+/>
+
+
+	<input
+  id="files-input"
+  bind:files={inputFiles}
+  type="file"
+  multiple
+  hidden
+  on:change={async () => {
+    if (inputFiles && inputFiles.length > 0) {
+      for (const file of inputFiles) {
+        // 传入多选的知识库ID数组
+        await uploadFileHandler(localStorage.token, file, selectedKnowledgeIds, $i18n);
+      }
+      // 重置状态
+      inputFiles = null;
+      document.getElementById('files-input').value = '';
+      uploadType = '';
+      selectedKnowledgeIds = [];
+    } else {
+      toast.error($i18n.t(`File not found.`));
+    }
+  }}
+/>
 
 	<div class="flex flex-col gap-1 px-1 mt-1.5 mb-3">
 		<div class="flex justify-between items-center">
@@ -136,6 +221,23 @@
 
 					<div class=" hidden md:block md:ml-1 text-xs">{$i18n.t('New Knowledge')}</div>
 				</a>
+				<AddContentMenu
+					on:upload={(e) => {
+						if (e.detail.type === 'directory') {
+      uploadType = 'directory';
+      showKnowledgeSelector = true; // 弹出选择器
+    } else if (e.detail.type === 'text') {
+      uploadType = 'text';
+      showKnowledgeSelector = true; // 弹出选择器
+    } else {
+      uploadType = 'file';
+      showKnowledgeSelector = true; // 弹出选择器
+    }
+					}}
+					on:sync={(e) => {
+						showSyncConfirmModal = true;
+					}}
+				/>
 			</div>
 		</div>
 	</div>
@@ -289,3 +391,6 @@
 		<Spinner className="size-5" />
 	</div>
 {/if}
+
+
+  

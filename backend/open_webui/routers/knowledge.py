@@ -411,29 +411,29 @@ def add_file_to_knowledge_by_id(
         data = knowledge.data or {}
         file_ids = data.get("file_ids", [])
 
-        if form_data.file_id not in file_ids:
-            file_ids.append(form_data.file_id)
-            data["file_ids"] = file_ids
+        # if form_data.file_id not in file_ids:
+        file_ids.append(form_data.file_id)
+        data["file_ids"] = file_ids
 
-            knowledge = Knowledges.update_knowledge_data_by_id(id=id, data=data)
+        knowledge = Knowledges.update_knowledge_data_by_id(id=id, data=data)
 
-            if knowledge:
-                files = Files.get_file_metadatas_by_ids(file_ids)
+        if knowledge:
+            files = Files.get_file_metadatas_by_ids(file_ids)
 
-                return KnowledgeFilesResponse(
-                    **knowledge.model_dump(),
-                    files=files,
-                )
-            else:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=ERROR_MESSAGES.DEFAULT("knowledge"),
-                )
+            return KnowledgeFilesResponse(
+                **knowledge.model_dump(),
+                files=files,
+            )
         else:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ERROR_MESSAGES.DEFAULT("file_id"),
+                detail=ERROR_MESSAGES.DEFAULT("knowledge"),
             )
+        # else:
+        #     raise HTTPException(
+        #         status_code=status.HTTP_400_BAD_REQUEST,
+        #         detail=ERROR_MESSAGES.DEFAULT("file_id"),
+        #     )
     else:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -484,6 +484,7 @@ def update_file_from_knowledge_by_id(
             request,
             ProcessFileForm(file_id=form_data.file_id, collection_name=id),
             user=user,
+            overwrite=False  # 如果文件已存在则跳过处理
         )
     except Exception as e:
         raise HTTPException(

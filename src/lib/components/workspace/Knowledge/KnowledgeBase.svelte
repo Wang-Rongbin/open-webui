@@ -400,7 +400,13 @@
 	};
 
 	const addFileHandler = async (fileId) => {
-		const updatedKnowledge = await addFileToKnowledgeById(localStorage.token, id, fileId).catch(
+		// const updatedKnowledge = await addFileToKnowledgeById(localStorage.token, id, fileId).catch(
+		// 	(e) => {
+		// 		toast.error(`${e}`);
+		// 		return null;
+		// 	}
+		// );
+		const updatedKnowledge = await addFileToKnowledgeById(localStorage.token, "de61590b-795e-44d4-8b3f-0df4d5222173", fileId).catch(
 			(e) => {
 				toast.error(`${e}`);
 				return null;
